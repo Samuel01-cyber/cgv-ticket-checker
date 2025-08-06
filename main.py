@@ -14,6 +14,7 @@ if not MOVIE_URL or not DISCORD_WEBHOOK_URL or not BROWSERLESS_KEY:
     print("❌ Thiếu MOVIE_URL, DISCORD_WEBHOOK_URL hoặc BROWSERLESS_KEY!")
     exit(1)
 
+# Endpoint mới của Browserless
 BROWSERLESS_URL = f"wss://production-sfo.browserless.io?token={BROWSERLESS_KEY}"
 
 HEADERS = {
@@ -45,10 +46,15 @@ def check_buy_ticket():
 
             # Chặn tài nguyên không cần thiết
             page.route("**/*", lambda route, request: route.abort()
-                       if request.resource_type in ["image", "font", "stylesheet"]
+                       if request.resource_type in ["image", "font", "stylesheet", "media"]
                        else route.continue_())
 
-            page.goto(MOVIE_URL, wait_until="domcontentloaded", timeout=30000)
+            try:
+                page.goto(MOVIE_URL, wait_until="domcontentloaded", timeout=90000)  # 90 giây
+            except:
+                print("⚠ Load trang quá lâu, thử lại lần sau.")
+                browser.close()
+                return
 
             if page.locator("button:has-text('Mua vé')").count() > 0:
                 print("✅ Phát hiện nút Mua vé!")
@@ -67,4 +73,3 @@ print(f"🚀 Bắt đầu theo dõi {MOVIE_URL} mỗi {CHECK_INTERVAL} giây..."
 while True:
     schedule.run_pending()
     time.sleep(1)
-

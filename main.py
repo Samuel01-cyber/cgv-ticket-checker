@@ -26,9 +26,14 @@ def check_buy_ticket():
     print("🔍 Đang kiểm tra nút 'Mua vé'...")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--ignore-certificate-errors"]
+        )
         page = browser.new_page()
-        page.goto(MOVIE_URL, timeout=60000)
+        
+        # Chỉ chờ DOM load + tăng timeout lên 120 giây
+        page.goto(MOVIE_URL, wait_until="domcontentloaded", timeout=120000)
 
         if page.locator("button:has-text('Mua vé')").count() > 0:
             send_discord_message(f"🎉 Vé đã mở! → {MOVIE_URL}")
@@ -43,3 +48,4 @@ print(f"🚀 Bắt đầu theo dõi {MOVIE_URL} mỗi {CHECK_INTERVAL} giây..."
 while True:
     schedule.run_pending()
     time.sleep(1)
+

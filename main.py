@@ -4,26 +4,32 @@ import requests
 import schedule
 from playwright.sync_api import sync_playwright
 
-MOVIE_URL = os.getenv("MOVIE_URL")
+MOVIE_URL = os.getenv("MOVIE_URL", "").strip()
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 60))
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+
+if not MOVIE_URL or not DISCORD_WEBHOOK_URL:
+    print("❌ Lỗi: Cần thiết lập MOVIE_URL và DISCORD_WEBHOOK_URL trong biến môi trường!")
+    exit(1)
 
 def send_discord_message(message):
     try:
-        requests.post(DISCORD_WEBHOOK_URL, data={"content": message})
-        print("[INFO] Sent Discord message.")
+        res = requests.post(DISCORD_WEBHOOK_URL, data={"content": message})
+        if res.status_code == 204:
+            print("[INFO] Đã gửi thông báo Discord.")
+        else:
+            print(f"[WARN] Gửi Discord thất bại ({res.status_code})")
     except Exception as e:
-        print(f"[ERROR] Discord send failed: {e}")
+        print(f"[ERROR] Lỗi gửi Discord: {e}")
 
 def check_buy_ticket():
-    print("🔍 Checking buy button...")
+    print("🔍 Đang kiểm tra nút 'Mua vé'...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(MOVIE_URL, timeout=60000)
 
-        # Kiểm tra nút Mua vé
         if page.locator("button:has-text('Mua vé')").count() > 0:
             send_discord_message(f"🎉 Vé đã mở! → {MOVIE_URL}")
         else:
@@ -32,7 +38,8 @@ def check_buy_ticket():
         browser.close()
 
 schedule.every(CHECK_INTERVAL).seconds.do(check_buy_ticket)
-print(f"🚀 Monitoring {MOVIE_URL} every {CHECK_INTERVAL}s...")
+print(f"🚀 Bắt đầu theo dõi {MOVIE_URL} mỗi {CHECK_INTERVAL} giây...")
+
 while True:
     schedule.run_pending()
     time.sleep(1)

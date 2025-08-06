@@ -1,3 +1,4 @@
-playwright
+BeautifulSoup
 requests
 schedule
+

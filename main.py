@@ -7,6 +7,11 @@ from playwright.sync_api import sync_playwright
 MOVIE_URL = os.getenv("MOVIE_URL", "").strip()
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 60))
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/115.0.0.0 Safari/537.36"
+}
 
 if not MOVIE_URL or not DISCORD_WEBHOOK_URL:
     print("❌ Lỗi: Cần thiết lập MOVIE_URL và DISCORD_WEBHOOK_URL trong biến môi trường!")
@@ -53,5 +58,6 @@ print(f"🚀 Bắt đầu theo dõi {MOVIE_URL} mỗi {CHECK_INTERVAL} giây..."
 while True:
     schedule.run_pending()
     time.sleep(1)
+
 
 

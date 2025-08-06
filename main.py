@@ -2,30 +2,25 @@ import os
 import time
 import requests
 import schedule
-import random
+from playwright.sync_api import sync_playwright
 
+# ==== Cấu hình ====
 MOVIE_URL = os.getenv("MOVIE_URL", "").strip()
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 60))
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+BROWSERLESS_KEY = os.getenv("BROWSERLESS_KEY", "").strip()  # API key Browserless
+
+if not MOVIE_URL or not DISCORD_WEBHOOK_URL or not BROWSERLESS_KEY:
+    print("❌ Thiếu MOVIE_URL, DISCORD_WEBHOOK_URL hoặc BROWSERLESS_KEY!")
+    exit(1)
+
+BROWSERLESS_URL = f"wss://chrome.browserless.io/playwright?token={BROWSERLESS_KEY}"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) "
                   "Chrome/115.0.0.0 Safari/537.36"
 }
-
-# Danh sách proxy Việt Nam miễn phí (HTTP/HTTPS)
-VN_PROXIES = [
-    "http://27.71.228.32",
-    "http://171.248.217.110",
-    "http://27.79.183.77",
-    "http://116.107.189.227",
-    "http://123.58.199.232"
-]
-
-if not MOVIE_URL or not DISCORD_WEBHOOK_URL:
-    print("❌ Cần thiết lập MOVIE_URL và DISCORD_WEBHOOK_URL!")
-    exit(1)
 
 def send_discord_message(message):
     """Gửi thông báo đến Discord"""
@@ -39,30 +34,31 @@ def send_discord_message(message):
         print(f"[ERROR] Lỗi gửi Discord: {e}")
 
 def check_buy_ticket():
-    print("🔍 Đang kiểm tra nút 'Mua vé'...")
+    print(f"🔍 Đang kiểm tra {MOVIE_URL}...")
 
-    # Chọn ngẫu nhiên 1 proxy Việt Nam
-    proxy = random.choice(VN_PROXIES)
-    proxies = {
-        "http": proxy,
-        "https": proxy
-    }
-    print(f"[INFO] Đang dùng proxy: {proxy}")
+    try:
+        with sync_playwright() as p:
+            # Kết nối tới Browserless.io
+            browser = p.chromium.connect_over_cdp(BROWSERLESS_URL)
+            context = browser.new_context(user_agent=HEADERS["User-Agent"])
+            page = context.new_page()
 
-    for attempt in range(3):  # thử tối đa 3 lần
-        try:
-            res = requests.get(MOVIE_URL, headers=HEADERS, proxies=proxies, timeout=60)
-            if "Mua vé" in res.text:
+            # Chặn tài nguyên không cần thiết
+            page.route("**/*", lambda route, request: route.abort()
+                       if request.resource_type in ["image", "font", "stylesheet"]
+                       else route.continue_())
+
+            page.goto(MOVIE_URL, wait_until="domcontentloaded", timeout=30000)
+
+            if page.locator("button:has-text('Mua vé')").count() > 0:
+                print("✅ Phát hiện nút Mua vé!")
                 send_discord_message(f"🎉 Vé đã mở! → {MOVIE_URL}")
             else:
                 print("⏳ Chưa thấy nút Mua vé.")
-            return
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Lỗi khi tải trang (lần {attempt+1}): {e}")
-            if attempt < 2:
-                print("[INFO] Thử lại...")
-                time.sleep(3)
-    print("[FAIL] Hết số lần thử, bỏ qua lần này.")
+
+            browser.close()
+    except Exception as e:
+        print(f"[ERROR] Lỗi kiểm tra: {e}")
 
 # Lịch chạy
 schedule.every(CHECK_INTERVAL).seconds.do(check_buy_ticket)
@@ -71,4 +67,3 @@ print(f"🚀 Bắt đầu theo dõi {MOVIE_URL} mỗi {CHECK_INTERVAL} giây..."
 while True:
     schedule.run_pending()
     time.sleep(1)
-

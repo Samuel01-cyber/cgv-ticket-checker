@@ -14,7 +14,7 @@ if not MOVIE_URL or not DISCORD_WEBHOOK_URL or not BROWSERLESS_KEY:
     print("❌ Thiếu MOVIE_URL, DISCORD_WEBHOOK_URL hoặc BROWSERLESS_KEY!")
     exit(1)
 
-BROWSERLESS_URL = f"wss://chrome.browserless.io/playwright?token={BROWSERLESS_KEY}"
+BROWSERLESS_URL = f"wss://chrome.browserless.io/playwright?token={2Sos59JKBpup1vM7ce8c8ada6166d32d24acba4d762d0f1f6}"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -67,3 +67,4 @@ print(f"🚀 Bắt đầu theo dõi {MOVIE_URL} mỗi {CHECK_INTERVAL} giây..."
 while True:
     schedule.run_pending()
     time.sleep(1)
+

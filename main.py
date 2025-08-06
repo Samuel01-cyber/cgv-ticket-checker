@@ -2,26 +2,35 @@ import os
 import time
 import requests
 import schedule
-from bs4 import BeautifulSoup
+import random
 
-# ==== Cấu hình từ biến môi trường ====
 MOVIE_URL = os.getenv("MOVIE_URL", "").strip()
-CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 60))  # giây
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 60))
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) "
                   "Chrome/115.0.0.0 Safari/537.36"
 }
 
+# Danh sách proxy Việt Nam miễn phí (HTTP/HTTPS)
+VN_PROXIES = [
+    "http://103.163.51.254:80",
+    "http://14.224.182.104:5678",
+    "http://27.71.45.94:5678",
+    "http://103.157.83.229:8080",
+    "http://42.118.146.150:5678"
+]
+
 if not MOVIE_URL or not DISCORD_WEBHOOK_URL:
-    print("❌ Cần thiết lập MOVIE_URL và DISCORD_WEBHOOK_URL trong biến môi trường!")
+    print("❌ Cần thiết lập MOVIE_URL và DISCORD_WEBHOOK_URL!")
     exit(1)
 
-# ==== Gửi tin nhắn Discord ====
 def send_discord_message(message):
+    """Gửi thông báo đến Discord"""
     try:
-        res = requests.post(DISCORD_WEBHOOK_URL, json={"content": message})
+        res = requests.post(DISCORD_WEBHOOK_URL, data={"content": message})
         if res.status_code == 204:
             print("[INFO] Đã gửi thông báo Discord.")
         else:
@@ -29,32 +38,36 @@ def send_discord_message(message):
     except Exception as e:
         print(f"[ERROR] Lỗi gửi Discord: {e}")
 
-# ==== Hàm kiểm tra nút mua vé ====
 def check_buy_ticket():
     print("🔍 Đang kiểm tra nút 'Mua vé'...")
-    try:
-        resp = requests.get(MOVIE_URL, headers=HEADERS, timeout=15)
-        if resp.status_code != 200:
-            print(f"⚠ Lỗi tải trang ({resp.status_code})")
+
+    # Chọn ngẫu nhiên 1 proxy Việt Nam
+    proxy = random.choice(VN_PROXIES)
+    proxies = {
+        "http": proxy,
+        "https": proxy
+    }
+    print(f"[INFO] Đang dùng proxy: {proxy}")
+
+    for attempt in range(3):  # thử tối đa 3 lần
+        try:
+            res = requests.get(MOVIE_URL, headers=HEADERS, proxies=proxies, timeout=60)
+            if "Mua vé" in res.text:
+                send_discord_message(f"🎉 Vé đã mở! → {MOVIE_URL}")
+            else:
+                print("⏳ Chưa thấy nút Mua vé.")
             return
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Lỗi khi tải trang (lần {attempt+1}): {e}")
+            if attempt < 2:
+                print("[INFO] Thử lại...")
+                time.sleep(3)
+    print("[FAIL] Hết số lần thử, bỏ qua lần này.")
 
-        soup = BeautifulSoup(resp.text, "html.parser")
-        
-        # Tìm nút Mua vé
-        buy_button = soup.find("button", string=lambda t: t and "Mua vé" in t)
-        
-        if buy_button:
-            print("🎉 ĐÃ TÌM THẤY NÚT MUA VÉ!")
-            send_discord_message(f"🎉 Vé đã mở! → {MOVIE_URL}")
-        else:
-            print("⏳ Chưa có vé.")
-    except Exception as e:
-        print(f"[ERROR] {e}")
-
-# Lên lịch chạy
+# Lịch chạy
 schedule.every(CHECK_INTERVAL).seconds.do(check_buy_ticket)
-
 print(f"🚀 Bắt đầu theo dõi {MOVIE_URL} mỗi {CHECK_INTERVAL} giây...")
+
 while True:
     schedule.run_pending()
     time.sleep(1)

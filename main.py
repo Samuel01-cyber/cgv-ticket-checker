@@ -16,11 +16,11 @@ HEADERS = {
 
 # Danh sách proxy Việt Nam miễn phí (HTTP/HTTPS)
 VN_PROXIES = [
-    "http://103.163.51.254:80",
-    "http://14.224.182.104:5678",
-    "http://27.71.45.94:5678",
-    "http://103.157.83.229:8080",
-    "http://42.118.146.150:5678"
+    "http://27.71.228.32",
+    "http://171.248.217.110",
+    "http://27.79.183.77",
+    "http://116.107.189.227",
+    "http://123.58.199.232"
 ]
 
 if not MOVIE_URL or not DISCORD_WEBHOOK_URL:
@@ -71,3 +71,4 @@ print(f"🚀 Bắt đầu theo dõi {MOVIE_URL} mỗi {CHECK_INTERVAL} giây..."
 while True:
     schedule.run_pending()
     time.sleep(1)
+

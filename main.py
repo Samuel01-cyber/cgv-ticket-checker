@@ -4,9 +4,7 @@ import requests
 import schedule
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 
 MOVIE_URL = os.getenv("MOVIE_URL")
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 60))
@@ -18,18 +16,24 @@ def send_discord_message(message):
 
 def check_buy_ticket():
     print("🔍 Checking buy button...")
+
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    options.add_argument("--disable-dev-shm-usage")
+    options.binary_location = "/usr/bin/chromium-browser"  # Quan trọng trên Railway
+
+    driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=options)
     driver.get(MOVIE_URL)
     time.sleep(3)
     try:
         buy_button = driver.find_element(By.XPATH, "//button[contains(text(),'Mua vé')]")
         if buy_button and buy_button.is_enabled():
             send_discord_message("🎉 Vé đã mở! → " + MOVIE_URL)
-    except Exception:
-        print("⏳ Chưa thấy nút Mua vé.")
+        else:
+            print("⏳ Chưa thấy nút Mua vé.")
+    except:
+        print("❌ Không tìm thấy nút.")
     finally:
         driver.quit()
 
